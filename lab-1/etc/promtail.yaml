@@ -1,0 +1,39 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push # Loki API Endpoint
+
+scrape_configs:
+  - job_name: python_container_scrape
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters: # Only collect containers with logging=promtail label
+          - name: label
+            values: ["logging=promtail"]
+    relabel_configs:
+      - source_labels: [__meta_docker_container_label_language] # Use container label 'language' as Loki label
+        target_label: language
+      - source_labels: ['__meta_docker_container_name'] # Use container name as Loki label
+        regex: '/(.*)' # Only take the last part of the container name
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream'] # Use container log stream (stdout, stderr) as Loki label
+        target_label: 'logstream'
+    pipeline_stages:
+      - match:
+          selector: '{language="python"}' # Apply multiline processing for logs with language=python
+          stages:
+            - multiline:
+                firstline: '^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2},\d{3}' # Regular expression to identify the first line
+                max_wait_time: 3s # Wait for 3 seconds
+      - match:
+          selector: '{language="java"}' # Apply multiline processing for logs with language=java
+          stages:
+            - multiline:
+                firstline: '^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2}\.\d{3}' # Regular expression to identify the first line
+                max_wait_time: 3s # Wait for 3 seconds
