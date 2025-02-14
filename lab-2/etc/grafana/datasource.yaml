@@ -1,0 +1,39 @@
+# config file version
+apiVersion: 1
+
+# list of datasources to insert/update depending
+# what's available in the database
+datasources:
+  - uid: prometheus
+    orgId: 1
+    name: Prometheus
+    type: prometheus
+    typeName: Prometheus
+    access: proxy
+    url: http://prometheus:9090
+    password: ''
+    user: ''
+    database: ''
+    basicAuth: false
+    isDefault: false
+    readOnly: false
+    editable: true
+  - uid: mimir
+    orgId: 1
+    name: Mimir
+    type: prometheus
+    typeName: mimir
+    access: proxy
+    url: http://mimir:9009/prometheus
+    password: ''
+    user: ''
+    database: ''
+    basicAuth: false
+    isDefault: true
+    readOnly: false
+    editable: true
+    jsonData:
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo
+          name: trace_id
+      httpMethod: POST

@@ -1,0 +1,49 @@
+version: "3.4"
+
+services:
+  mimir:
+    image: grafana/mimir:2.10.3
+    container_name: mimir
+    ports:
+      - 9009:9009
+    volumes:
+      - ./etc/mimir.yaml:/etc/mimir/mimir.yaml
+    command:
+      - -usage-stats.enabled=false
+      - -config.file=/etc/mimir/mimir.yaml
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.88.0
+    container_name: otel-collector
+    command:
+      - "--config=/conf/config.yaml"
+    volumes:
+      - ./etc/otel-collector.yaml:/conf/config.yaml
+      - ./vol:/vol
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
+      - "8888:8888"
+    restart: on-failure
+    depends_on:
+      - mimir
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./etc/grafana/:/etc/grafana/provisioning/datasources #
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-remote-write-receiver'
+    volumes:
+      - ./etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector

@@ -1,0 +1,45 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+processors:
+  batch:
+    send_batch_max_size: 1000
+    send_batch_size: 100
+    timeout: 5s
+  resource:
+    attributes:
+      - key: env
+        value: experiments
+        action: upsert
+exporters:
+  file/raw:
+    path: /vol/raw-metrics.json
+    format: json
+    flush_interval: 1s
+  debug: { verbosity: detailed }
+  prometheusremotewrite/mimir:
+    endpoint: http://mimir:9009/api/v1/push
+    tls:
+      insecure: true
+  prometheusremotewrite/prometheus:
+    endpoint: http://prometheus:9090/api/v1/write
+    tls:
+      insecure: true
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheusremotewrite/mimir, prometheusremotewrite/prometheus, debug]
+    # metrics/raw:
+    #   receivers: [otlp]
+    #   processors: [batch, resource]
+    #   exporters: [file/raw]
